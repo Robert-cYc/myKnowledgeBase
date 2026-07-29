@@ -5,6 +5,7 @@ export interface KnowledgeItem {
   title: string
   content: string
   tags: string[]
+  category?: string
   source: SourceType
   sourceFile?: string
   fileData?: string
@@ -15,6 +16,7 @@ export interface KnowledgeItem {
 export interface SearchFilters {
   query: string
   tags: string[]
+  category?: string
   sortBy: 'createdAt' | 'updatedAt' | 'title'
   sortOrder: 'asc' | 'desc'
 }

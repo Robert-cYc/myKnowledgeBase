@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useKnowledgeStore } from '../store/knowledgeStore'
 import type { KnowledgeItem } from '../types'
-import { FileText, Edit, Trash2, Calendar, Tag, Eye, X, Download, AlertCircle } from 'lucide-react'
+import { FileText, Edit, Trash2, Calendar, Tag, Eye, X, Download, AlertCircle, Folder } from 'lucide-react'
 import { marked } from 'marked'
 
 interface KnowledgeListProps {
@@ -173,6 +173,15 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
             {item.title}
           </h3>
 
+          {item.category && (
+            <div className="mb-2">
+              <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs">
+                <Folder className="h-3 w-3" />
+                {item.category}
+              </span>
+            </div>
+          )}
+
           {item.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-2">
               {item.tags.slice(0, 3).map((tag) => (
@@ -268,6 +277,12 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
                 <Calendar className="h-3 w-3" />
                 {new Date(item.updatedAt).toLocaleDateString('zh-TW')}
               </span>
+              {item.category && (
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                  <Folder className="h-3 w-3" />
+                  {item.category}
+                </span>
+              )}
               {item.sourceFile && (
                 <span className="text-blue-600">來源: {item.sourceFile}</span>
               )}
@@ -382,6 +397,12 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
               <Calendar className="h-3 w-3" />
               <span>更新: {new Date(item.updatedAt).toLocaleDateString('zh-TW')}</span>
             </div>
+            {item.category && (
+              <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                <Folder className="h-3 w-3" />
+                {item.category}
+              </span>
+            )}
             {item.sourceFile && (
               <span className="flex items-center gap-1">
                 <FileText className="h-3 w-3" />

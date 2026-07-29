@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useKnowledgeStore } from '../store/knowledgeStore'
 import type { KnowledgeItem } from '../types'
-import { X, Save, Plus, Eye, Edit3 } from 'lucide-react'
+import { X, Save, Plus, Eye, Edit3, Folder } from 'lucide-react'
 import { marked } from 'marked'
 
 interface KnowledgeEditorProps {
@@ -15,10 +15,12 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
   onClose,
   onSave,
 }) => {
-  const { addItem, updateItem } = useKnowledgeStore()
+  const { addItem, updateItem, getCategories } = useKnowledgeStore()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [tags, setTags] = useState('')
+  const [category, setCategory] = useState('')
+  const [customCategory, setCustomCategory] = useState('')
   const [editorMode, setEditorMode] = useState<'edit' | 'preview'>('edit')
 
   const renderedMarkdown = marked(content) as string
@@ -28,6 +30,7 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
       setTitle(item.title)
       setContent(item.content)
       setTags(item.tags.join(', '))
+      setCategory(item.category || '')
     }
   }, [item])
 
@@ -44,13 +47,16 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
       .map((t) => t.trim())
       .filter((t) => t.length > 0)
 
+    const finalCategory = category === '__custom__' ? customCategory.trim() : category || undefined
+
     if (item) {
-      updateItem(item.id, { title, content, tags: tagList })
+      updateItem(item.id, { title, content, tags: tagList, category: finalCategory })
     } else {
       addItem({
         title,
         content,
         tags: tagList,
+        category: finalCategory,
         source: 'manual',
       })
     }
@@ -136,6 +142,40 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
               className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="標籤以逗號分隔，例如: 筆記,技術,學習"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1 flex items-center gap-1">
+              <Folder className="h-4 w-4" />
+              分類
+            </label>
+            <select
+              value={category}
+              onChange={(e) => {
+                setCategory(e.target.value)
+                if (e.target.value !== '__custom__') {
+                  setCustomCategory('')
+                }
+              }}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700"
+            >
+              <option value="">未分類</option>
+              {getCategories().map(({ category }) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+              <option value="__custom__">其他...</option>
+            </select>
+            {category === '__custom__' && (
+              <input
+                type="text"
+                value={customCategory}
+                onChange={(e) => setCustomCategory(e.target.value)}
+                className="w-full mt-2 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="輸入分類名稱"
+              />
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-4">

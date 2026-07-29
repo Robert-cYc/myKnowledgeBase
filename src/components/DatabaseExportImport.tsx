@@ -1,10 +1,10 @@
 import React, { useRef, useState } from 'react'
 import { useKnowledgeStore } from '../store/knowledgeStore'
 import type { ExportData, ImportMode } from '../store/knowledgeStore'
-import { Download, Upload, AlertCircle, Check, FileJson, Trash2 } from 'lucide-react'
+import { Download, Upload, AlertCircle, Check, FileJson } from 'lucide-react'
 
 export const DatabaseExportImport: React.FC = () => {
-  const { exportData, importData, clearAll, items } = useKnowledgeStore()
+  const { exportData, importData, items } = useKnowledgeStore()
   const [importStatus, setImportStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [statusMessage, setStatusMessage] = useState('')
   const [importMode, setImportMode] = useState<ImportMode>('merge')
@@ -88,18 +88,6 @@ export const DatabaseExportImport: React.FC = () => {
     }, 4000)
   }
 
-  const handleClearAll = () => {
-    if (window.confirm(`確定要清空所有資料嗎？ (${items.length} 個項目，此操作無法復原)`)) {
-      clearAll()
-      setImportStatus('success')
-      setStatusMessage('已清空所有資料')
-      setTimeout(() => {
-        setImportStatus('idle')
-        setStatusMessage('')
-      }, 3000)
-    }
-  }
-
   return (
     <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
       <h3 className="text-lg font-medium mb-3 flex items-center gap-2">
@@ -107,46 +95,9 @@ export const DatabaseExportImport: React.FC = () => {
         資料庫匯入/匯出
       </h3>
 
-      <div className="space-y-4">
-        {/* 匯出 */}
-        <div>
-          <button
-            onClick={handleExport}
-            disabled={items.length === 0}
-            className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <Download className="h-4 w-4" />
-            匯出資料庫 ({items.length} 項)
-          </button>
-        </div>
-
-        {/* 匯入 */}
-        <div>
-          <div className="flex gap-2 mb-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="importMode"
-                value="merge"
-                checked={importMode === 'merge'}
-                onChange={(e) => setImportMode(e.target.value as ImportMode)}
-                className="text-blue-600 focus:ring-blue-500"
-              />
-              合併（新增項目）
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="importMode"
-                value="replace"
-                checked={importMode === 'replace'}
-                onChange={(e) => setImportMode(e.target.value as ImportMode)}
-                className="text-blue-600 focus:ring-blue-500"
-              />
-              替換（清空並匯入）
-            </label>
-          </div>
-
+      <div className="flex flex-col sm:flex-row gap-3">
+        {/* 匯入 + 模式選擇 - 左邊 */}
+        <div className="sm:w-1/2 flex flex-col gap-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -159,46 +110,71 @@ export const DatabaseExportImport: React.FC = () => {
 
           <label
             htmlFor="db-import-input"
-            className={`flex items-center justify-center gap-2 w-full px-4 py-2 border-2 border-dashed rounded-lg transition-colors ${
-              importStatus === 'loading'
+            className={`flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg transition-colors ${importStatus === 'loading'
                 ? 'cursor-not-allowed opacity-60 bg-gray-50'
                 : 'cursor-pointer hover:bg-gray-50'
-            }`}
+              }}`}
           >
-            <Upload className="h-5 w-5 text-gray-400" />
+            <Download className="h-5 w-5 text-gray-400" />
             <span className="text-sm text-gray-600">
-              {importStatus === 'loading' ? statusMessage : '點擊選擇匯入檔案'}
+              {importStatus === 'loading' ? statusMessage : '匯入資料庫'}
             </span>
           </label>
+
+          {/* 匯入模式選擇 */}
+          <div className="flex gap-3 text-xs justify-center">
+            <label className="flex items-center gap-1">
+              <input
+                type="radio"
+                name="importMode"
+                value="merge"
+                checked={importMode === 'merge'}
+                onChange={(e) => setImportMode(e.target.value as ImportMode)}
+                className="text-blue-600 focus:ring-blue-500"
+              />
+              合併
+            </label>
+            <label className="flex items-center gap-1">
+              <input
+                type="radio"
+                name="importMode"
+                value="replace"
+                checked={importMode === 'replace'}
+                onChange={(e) => setImportMode(e.target.value as ImportMode)}
+                className="text-blue-600 focus:ring-blue-500"
+              />
+              替換
+            </label>
+          </div>
         </div>
 
-        {/* 清空 */}
-        <div>
+        {/* 匯出 - 右邊 */}
+        <div className="sm:w-1/2">
           <button
-            onClick={handleClearAll}
+            onClick={handleExport}
             disabled={items.length === 0}
-            className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <Trash2 className="h-4 w-4" />
-            清空所有資料
+            <Upload className="h-4 w-4" />
+            匯出資料庫 ({items.length} 項)
           </button>
         </div>
-
-        {/* 狀態訊息 */}
-        {importStatus === 'success' && (
-          <div className="flex items-center gap-2 text-sm text-green-600">
-            <Check className="h-4 w-4" />
-            {statusMessage}
-          </div>
-        )}
-
-        {importStatus === 'error' && (
-          <div className="flex items-center gap-2 text-sm text-red-600">
-            <AlertCircle className="h-4 w-4" />
-            {statusMessage}
-          </div>
-        )}
       </div>
+
+      {/* 狀態訊息 */}
+      {importStatus === 'success' && (
+        <div className="flex items-center gap-2 text-sm text-green-600 mt-2">
+          <Check className="h-4 w-4" />
+          {statusMessage}
+        </div>
+      )}
+
+      {importStatus === 'error' && (
+        <div className="flex items-center gap-2 text-sm text-red-600 mt-2">
+          <AlertCircle className="h-4 w-4" />
+          {statusMessage}
+        </div>
+      )}
     </div>
   )
 }

@@ -6,6 +6,8 @@ import { SearchBar } from './components/SearchBar'
 import { FileImporter } from './components/FileImporter'
 import { DatabaseExportImport } from './components/DatabaseExportImport'
 import { AutoClassifier } from './components/AutoClassifier'
+import { TagManager } from './components/TagManager'
+import { CategoryManager } from './components/CategoryManager'
 import type { KnowledgeItem } from './types'
 
 function App() {
@@ -30,6 +32,8 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto max-w-4xl p-4">
+        <DatabaseExportImport />
+
         <header className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">知識庫</h1>
           <button
@@ -42,8 +46,9 @@ function App() {
         </header>
 
         <FileImporter />
-        <DatabaseExportImport />
         <AutoClassifier />
+        <TagManager />
+        <CategoryManager />
         <SearchBar />
         <KnowledgeList onEdit={handleEdit} />
       </div>

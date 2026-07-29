@@ -102,9 +102,16 @@ interface KnowledgeState {
   getItemById: (id: string) => KnowledgeItem | undefined
   exportData: () => ExportData
   importData: (data: ExportData, mode: ImportMode) => void
-  clearAll: () => void
   autoClassifyItem: (id: string) => string[]
   autoClassifyAll: () => void
+  renameTag: (oldTag: string, newTag: string) => void
+  mergeTags: (sourceTags: string[], targetTag: string) => void
+  deleteTag: (tag: string) => void
+  getAllTags: () => Array<{ tag: string; count: number }>
+  setItemCategory: (id: string, category: string | undefined) => void
+  renameCategory: (oldCategory: string, newCategory: string) => void
+  deleteCategory: (category: string) => void
+  getCategories: () => Array<{ category: string; count: number }>
 }
 
 export const useKnowledgeStore = create<KnowledgeState>()(
@@ -114,6 +121,7 @@ export const useKnowledgeStore = create<KnowledgeState>()(
       searchFilters: {
         query: '',
         tags: [],
+        category: undefined,
         sortBy: 'updatedAt',
         sortOrder: 'desc',
       },
@@ -195,6 +203,11 @@ export const useKnowledgeStore = create<KnowledgeState>()(
           )
         }
 
+        // 分類篩選
+        if (searchFilters.category) {
+          filtered = filtered.filter((item) => item.category === searchFilters.category)
+        }
+
         // 排序
         filtered.sort((a, b) => {
           const sortBy = searchFilters.sortBy
@@ -239,10 +252,6 @@ export const useKnowledgeStore = create<KnowledgeState>()(
         }
       },
 
-      clearAll: () => {
-        set({ items: [], selectedItem: null })
-      },
-
       autoClassifyItem: (id) => {
         const item = get().items.find((i) => i.id === id)
         if (!item) return []
@@ -270,6 +279,111 @@ export const useKnowledgeStore = create<KnowledgeState>()(
             return item
           }),
         }))
+      },
+
+      renameTag: (oldTag, newTag) => {
+        if (!newTag.trim() || oldTag === newTag) return
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.tags.includes(oldTag)
+              ? {
+                  ...item,
+                  tags: item.tags.map((t) => (t === oldTag ? newTag : t)),
+                  updatedAt: new Date().toISOString(),
+                }
+              : item
+          ),
+        }))
+      },
+
+      mergeTags: (sourceTags, targetTag) => {
+        if (!targetTag.trim() || sourceTags.length === 0) return
+        set((state) => ({
+          items: state.items.map((item) => {
+            const hasSourceTag = item.tags.some((t) => sourceTags.includes(t))
+            if (!hasSourceTag) return item
+
+            const newTags = item.tags
+              .filter((t) => !sourceTags.includes(t))
+              .filter((t) => t !== targetTag)
+            newTags.push(targetTag)
+
+            return {
+              ...item,
+              tags: newTags,
+              updatedAt: new Date().toISOString(),
+            }
+          }),
+        }))
+      },
+
+      deleteTag: (tag) => {
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.tags.includes(tag)
+              ? {
+                  ...item,
+                  tags: item.tags.filter((t) => t !== tag),
+                  updatedAt: new Date().toISOString(),
+                }
+              : item
+          ),
+        }))
+      },
+
+      getAllTags: () => {
+        const tagCounts: Record<string, number> = {}
+        get().items.forEach((item) => {
+          item.tags.forEach((tag) => {
+            tagCounts[tag] = (tagCounts[tag] ?? 0) + 1
+          })
+        })
+        return Object.entries(tagCounts)
+          .map(([tag, count]) => ({ tag, count }))
+          .sort((a, b) => b.count - a.count)
+      },
+
+      setItemCategory: (id, category) => {
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.id === id
+              ? { ...item, category, updatedAt: new Date().toISOString() }
+              : item
+          ),
+        }))
+      },
+
+      renameCategory: (oldCategory, newCategory) => {
+        if (!newCategory.trim() || oldCategory === newCategory) return
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.category === oldCategory
+              ? { ...item, category: newCategory, updatedAt: new Date().toISOString() }
+              : item
+          ),
+        }))
+      },
+
+      deleteCategory: (category) => {
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.category === category
+              ? { ...item, category: undefined, updatedAt: new Date().toISOString() }
+              : item
+          ),
+        }))
+      },
+
+      getCategories: () => {
+        const categoryCounts: Record<string, number> = {}
+        get().items.forEach((item) => {
+          if (item.category) {
+            categoryCounts[item.category] = (categoryCounts[item.category] ?? 0) + 1
+          }
+        })
+        return Object.entries(categoryCounts)
+          .map(([category, count]) => ({ category, count }))
+          .sort((a, b) => b.count - a.count)
       },
     }),
     {

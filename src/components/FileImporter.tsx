@@ -4,7 +4,7 @@ import type { SourceType } from '../types'
 import { FileUp, FileText, AlertCircle, Check, Loader2 } from 'lucide-react'
 
 export const FileImporter: React.FC = () => {
-  const { importItem } = useKnowledgeStore()
+  const { importItem, addItem } = useKnowledgeStore()
   const [importStatus, setImportStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [statusMessage, setStatusMessage] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -126,62 +126,83 @@ export const FileImporter: React.FC = () => {
 
   const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp']
 
-  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
+  const processFile = async (file: File): Promise<void> => {
     const fileExtension = file.name.split('.').pop()?.toLowerCase()
 
+    let content = ''
+    let source: SourceType = 'manual'
+    let title = ''
+
+    let fileData: string | undefined = undefined
+
+    if (fileExtension === 'pdf') {
+      source = 'pdf'
+      content = await extractTextFromPDF(file)
+      // 優先從 Markdown 內容中找第一個 H1 標題
+      title = getMarkdownTitle(content) || file.name.replace(/\.pdf$/i, '') || '未命名'
+      fileData = await fileToBase64(file)
+    } else if (fileExtension === 'md' || fileExtension === 'markdown') {
+      source = 'markdown'
+      content = await extractTextFromMarkdown(file)
+      title = getMarkdownTitle(content) || file.name.replace(/\.(md|markdown)$/, '') || '未命名'
+    } else if (IMAGE_EXTENSIONS.includes(fileExtension ?? '')) {
+      source = 'image'
+      title = file.name.replace(/\.[^.]+$/, '') || '未命名'
+      fileData = await fileToBase64(file)
+      // 內容存成 Markdown 圖片語法，方便後續渲染
+      content = `# ${title}\n\n![${title}](${fileData})\n`
+    } else {
+      throw new Error('不支援的檔案格式（支援：PDF、Markdown、圖片）')
+    }
+
+    if (!content.trim()) {
+      throw new Error('無法提取檔案內容')
+    }
+
+    // 使用 addItem 直接新增，確保每個檔案都是獨立項目
+    addItem({
+      title,
+      content: content.substring(0, 500000), // 最多 50 萬字元
+      tags: [],
+      source,
+      sourceFile: file.name,
+      fileData,
+    })
+  }
+
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    if (files.length === 0) return
+
     setImportStatus('loading')
-    setStatusMessage(`正在處理 ${file.name}...`)
+    setStatusMessage(`正在處理 ${files.length} 個檔案...`)
 
-    try {
-      let content = ''
-      let source: SourceType = 'manual'
-      let title = ''
+    let successCount = 0
+    let errorFiles: string[] = []
 
-      let fileData: string | undefined = undefined
-
-      if (fileExtension === 'pdf') {
-        source = 'pdf'
-        content = await extractTextFromPDF(file)
-        // 優先從 Markdown 內容中找第一個 H1 標題
-        title = getMarkdownTitle(content) || file.name.replace(/\.pdf$/i, '') || '未命名'
-        fileData = await fileToBase64(file)
-      } else if (fileExtension === 'md' || fileExtension === 'markdown') {
-        source = 'markdown'
-        content = await extractTextFromMarkdown(file)
-        title = getMarkdownTitle(content) || file.name.replace(/\.(md|markdown)$/, '') || '未命名'
-      } else if (IMAGE_EXTENSIONS.includes(fileExtension ?? '')) {
-        source = 'image'
-        title = file.name.replace(/\.[^.]+$/, '') || '未命名'
-        fileData = await fileToBase64(file)
-        // 內容存成 Markdown 圖片語法，方便後續渲染
-        content = `# ${title}\n\n![${title}](${fileData})\n`
-      } else {
-        throw new Error('不支援的檔案格式（支援：PDF、Markdown、圖片）')
+    for (const file of files) {
+      try {
+        await processFile(file)
+        successCount++
+      } catch (error) {
+        console.error('Import error:', error)
+        errorFiles.push(file.name)
       }
+    }
 
-      if (!content.trim()) {
-        throw new Error('無法提取檔案內容')
-      }
-
-      importItem({
-        title,
-        content: content.substring(0, 500000), // 最多 50 萬字元
-        tags: [],
-        source,
-        sourceFile: file.name,
-        fileData,
-      })
-
+    if (successCount > 0) {
       setImportStatus('success')
-      setStatusMessage(`成功匯入「${title}」(${file.name})`)
-    } catch (error) {
-      console.error('Import error:', error)
+      if (errorFiles.length > 0) {
+        setStatusMessage(`成功匯入 ${successCount} 個檔案，${errorFiles.length} 個失敗`)
+      } else {
+        setStatusMessage(`成功匯入 ${successCount} 個檔案`)
+      }
+    } else {
       setImportStatus('error')
       setStatusMessage(
-        error instanceof Error ? error.message : '匯入失敗'
+        errorFiles.length > 0
+          ? `匯入失敗：${errorFiles.join(', ')}`
+          : '匯入失敗'
       )
     }
 
@@ -209,6 +230,7 @@ export const FileImporter: React.FC = () => {
           ref={fileInputRef}
           type="file"
           accept=".pdf,.md,.markdown,.jpg,.jpeg,.png,.gif,.webp,.svg,.bmp"
+          multiple
           onChange={handleFileImport}
           className="hidden"
           id="file-input"

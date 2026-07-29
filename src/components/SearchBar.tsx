@@ -1,15 +1,18 @@
 import React from 'react'
 import { useKnowledgeStore } from '../store/knowledgeStore'
-import { Search, Tags, X, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, List, LayoutList } from 'lucide-react'
+import { Search, Tags, X, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, List, LayoutList, Folder } from 'lucide-react'
 import type { ViewMode } from '../types'
 
 export const SearchBar: React.FC = () => {
-  const { searchFilters, setSearchFilters, items, viewMode, setViewMode } = useKnowledgeStore()
+  const { searchFilters, setSearchFilters, items, viewMode, setViewMode, getCategories } = useKnowledgeStore()
 
   // 提取所有標籤
   const allTags = Array.from(
     new Set(items.flatMap((item) => item.tags))
   ).sort()
+
+  // 提取所有分類
+  const allCategories = getCategories().map((c) => c.category)
 
   const handleTagClick = (tag: string) => {
     const currentTags = [...searchFilters.tags]
@@ -32,6 +35,7 @@ export const SearchBar: React.FC = () => {
     setSearchFilters({
       query: '',
       tags: [],
+      category: undefined,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
     })
@@ -73,8 +77,25 @@ export const SearchBar: React.FC = () => {
         )}
       </div>
 
+      {/* 分類篩選 */}
+      {allCategories.length > 0 && (
+        <div className="flex items-center gap-2">
+          <Folder className="h-4 w-4 text-gray-400 flex-shrink-0" />
+          <select
+            value={searchFilters.category || ''}
+            onChange={(e) => setSearchFilters({ category: e.target.value || undefined })}
+            className="flex-1 text-sm border rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-700"
+          >
+            <option value="">所有分類</option>
+            {allCategories.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* 清除所有篩選 */}
-      {(searchFilters.query || searchFilters.tags.length > 0) && (
+      {(searchFilters.query || searchFilters.tags.length > 0 || searchFilters.category) && (
         <div className="flex justify-end">
           <button
             onClick={clearAll}
