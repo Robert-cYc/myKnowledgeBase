@@ -4,6 +4,8 @@ import { KnowledgeList } from './components/KnowledgeList'
 import { KnowledgeEditor } from './components/KnowledgeEditor'
 import { SearchBar } from './components/SearchBar'
 import { FileImporter } from './components/FileImporter'
+import { DatabaseExportImport } from './components/DatabaseExportImport'
+import { AutoClassifier } from './components/AutoClassifier'
 import type { KnowledgeItem } from './types'
 
 function App() {
@@ -40,6 +42,8 @@ function App() {
         </header>
 
         <FileImporter />
+        <DatabaseExportImport />
+        <AutoClassifier />
         <SearchBar />
         <KnowledgeList onEdit={handleEdit} />
       </div>

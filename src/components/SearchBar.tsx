@@ -1,9 +1,10 @@
 import React from 'react'
 import { useKnowledgeStore } from '../store/knowledgeStore'
-import { Search, Tags, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { Search, Tags, X, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, List, LayoutList } from 'lucide-react'
+import type { ViewMode } from '../types'
 
 export const SearchBar: React.FC = () => {
-  const { searchFilters, setSearchFilters, items } = useKnowledgeStore()
+  const { searchFilters, setSearchFilters, items, viewMode, setViewMode } = useKnowledgeStore()
 
   // 提取所有標籤
   const allTags = Array.from(
@@ -74,6 +75,46 @@ export const SearchBar: React.FC = () => {
             <><ArrowDown className="h-4 w-4" /><span className="text-xs">降冪</span></>
           )}
         </button>
+      </div>
+
+      {/* 視圖模式切換 */}
+      <div className="flex items-center gap-1">
+        <span className="text-sm font-medium text-gray-600 flex-shrink-0">檢視：</span>
+        <div className="flex gap-1 bg-gray-100 rounded-md p-1">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`p-1.5 rounded transition-colors ${
+              viewMode === 'grid'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+            title="圖示檢視"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`p-1.5 rounded transition-colors ${
+              viewMode === 'list'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+            title="並排檢視"
+          >
+            <List className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setViewMode('detail')}
+            className={`p-1.5 rounded transition-colors ${
+              viewMode === 'detail'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+            title="詳細資料檢視"
+          >
+            <LayoutList className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {allTags.length > 0 && (

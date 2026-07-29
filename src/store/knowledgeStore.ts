@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { StateStorage } from 'zustand/middleware'
-import type { KnowledgeItem, SearchFilters } from '../types'
+import type { KnowledgeItem, SearchFilters, ViewMode } from '../types'
+import { suggestTags } from '../utils/classifier'
 
 const indexedDBStorage: StateStorage = {
   getItem: async (name: string): Promise<string | null> => {
@@ -76,18 +77,34 @@ const indexedDBStorage: StateStorage = {
   }
 }
 
+export type ImportMode = 'merge' | 'replace'
+
+export interface ExportData {
+  version: string
+  exportedAt: string
+  itemCount: number
+  items: KnowledgeItem[]
+}
+
 interface KnowledgeState {
   items: KnowledgeItem[]
   searchFilters: SearchFilters
   selectedItem: KnowledgeItem | null
+  viewMode: ViewMode
   addItem: (item: Omit<KnowledgeItem, 'id' | 'createdAt' | 'updatedAt'>) => void
   updateItem: (id: string, item: Partial<KnowledgeItem>) => void
   deleteItem: (id: string) => void
   importItem: (item: Omit<KnowledgeItem, 'id' | 'createdAt' | 'updatedAt'>) => void
   setSearchFilters: (filters: Partial<SearchFilters>) => void
   setSelectedItem: (item: KnowledgeItem | null) => void
+  setViewMode: (mode: ViewMode) => void
   getFilteredItems: () => KnowledgeItem[]
   getItemById: (id: string) => KnowledgeItem | undefined
+  exportData: () => ExportData
+  importData: (data: ExportData, mode: ImportMode) => void
+  clearAll: () => void
+  autoClassifyItem: (id: string) => string[]
+  autoClassifyAll: () => void
 }
 
 export const useKnowledgeStore = create<KnowledgeState>()(
@@ -101,6 +118,7 @@ export const useKnowledgeStore = create<KnowledgeState>()(
         sortOrder: 'desc',
       },
       selectedItem: null,
+      viewMode: 'list' as ViewMode,
 
       addItem: (item) => {
         const newItem: KnowledgeItem = {
@@ -152,6 +170,10 @@ export const useKnowledgeStore = create<KnowledgeState>()(
         set({ selectedItem: item })
       },
 
+      setViewMode: (mode) => {
+        set({ viewMode: mode })
+      },
+
       getFilteredItems: () => {
         const { items, searchFilters } = get()
         let filtered = [...items]
@@ -192,6 +214,62 @@ export const useKnowledgeStore = create<KnowledgeState>()(
 
       getItemById: (id) => {
         return get().items.find((item) => item.id === id)
+      },
+
+      exportData: () => {
+        const items = get().items
+        return {
+          version: '1.0.0',
+          exportedAt: new Date().toISOString(),
+          itemCount: items.length,
+          items,
+        }
+      },
+
+      importData: (data, mode) => {
+        if (mode === 'replace') {
+          set({ items: data.items, selectedItem: null })
+        } else {
+          // merge: add items that don't already exist (by id)
+          const existingIds = new Set(get().items.map((i) => i.id))
+          const newItems = data.items.filter((i) => !existingIds.has(i.id))
+          set((state) => ({
+            items: [...state.items, ...newItems],
+          }))
+        }
+      },
+
+      clearAll: () => {
+        set({ items: [], selectedItem: null })
+      },
+
+      autoClassifyItem: (id) => {
+        const item = get().items.find((i) => i.id === id)
+        if (!item) return []
+
+        const suggestedTags = suggestTags(item.title, item.content, item.tags)
+        if (suggestedTags.length > 0) {
+          get().updateItem(id, {
+            tags: [...item.tags, ...suggestedTags],
+          })
+        }
+        return suggestedTags
+      },
+
+      autoClassifyAll: () => {
+        set((state) => ({
+          items: state.items.map((item) => {
+            const suggestedTags = suggestTags(item.title, item.content, item.tags)
+            if (suggestedTags.length > 0) {
+              return {
+                ...item,
+                tags: [...item.tags, ...suggestedTags],
+                updatedAt: new Date().toISOString(),
+              }
+            }
+            return item
+          }),
+        }))
       },
     }),
     {

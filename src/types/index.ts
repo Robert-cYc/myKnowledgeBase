@@ -18,3 +18,5 @@ export interface SearchFilters {
   sortBy: 'createdAt' | 'updatedAt' | 'title'
   sortOrder: 'asc' | 'desc'
 }
+
+export type ViewMode = 'grid' | 'list' | 'detail'

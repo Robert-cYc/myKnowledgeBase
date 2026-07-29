@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useKnowledgeStore } from '../store/knowledgeStore'
 import type { KnowledgeItem } from '../types'
-import { FileText, Edit, Trash2, Calendar, Tag, Eye, X } from 'lucide-react'
+import { FileText, Edit, Trash2, Calendar, Tag, Eye, X, Download, AlertCircle } from 'lucide-react'
 import { marked } from 'marked'
 
 interface KnowledgeListProps {
@@ -9,17 +9,96 @@ interface KnowledgeListProps {
 }
 
 export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
-  const { getFilteredItems, deleteItem, setSelectedItem } = useKnowledgeStore()
+  const { getFilteredItems, deleteItem, setSelectedItem, viewMode } = useKnowledgeStore()
   const [activeViewerUrl, setActiveViewerUrl] = useState<string | null>(null)
   const [activeViewerTitle, setActiveViewerTitle] = useState<string>('')
   const [activeViewerType, setActiveViewerType] = useState<'pdf' | 'image'>('pdf')
   const [isPdfMaximized, setIsPdfMaximized] = useState(false)
+  const [pdfPages, setPdfPages] = useState<Array<{ url: string; width: number; height: number }>>([])
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfError, setPdfError] = useState<string | null>(null)
+  const pdfCanvasRefs = useRef<Map<string, HTMLCanvasElement>>(new Map())
   const items = getFilteredItems()
 
   const handleDelete = (id: string, title: string) => {
     if (window.confirm(`確定要刪除「${title}」嗎？`)) {
       deleteItem(id)
     }
+  }
+
+  const openViewer = (item: KnowledgeItem) => {
+    if (item.fileData) {
+      setActiveViewerUrl(item.fileData)
+      setActiveViewerTitle(item.title)
+      setActiveViewerType(item.source === 'image' ? 'image' : 'pdf')
+
+      // 如果是 PDF，使用 canvas 渲染
+      if (item.source === 'pdf') {
+        renderPdfToCanvas(item.fileData)
+      }
+    }
+  }
+
+  const renderPdfToCanvas = async (dataUrl: string) => {
+    setPdfLoading(true)
+    setPdfError(null)
+    setPdfPages([])
+
+    try {
+      const pdfjsLib = await import('pdfjs-dist')
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
+
+      // 將 base64 轉換為 ArrayBuffer
+      const base64 = dataUrl.split(',')[1]
+      const binary = atob(base64)
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i)
+      }
+
+      const pdf = await pdfjsLib.getDocument({ data: bytes }).promise
+      const pages: Array<{ url: string; width: number; height: number }> = []
+
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i)
+        const viewport = page.getViewport({ scale: 1.5 })
+        const canvas = document.createElement('canvas')
+        const context = canvas.getContext('2d')
+        if (!context) continue
+
+        canvas.width = viewport.width
+        canvas.height = viewport.height
+        canvas.style.maxWidth = '100%'
+        canvas.style.height = 'auto'
+
+        await page.render({
+          canvasContext: context,
+          viewport,
+        }).promise
+
+        const pageUrl = canvas.toDataURL('image/png')
+        pages.push({
+          url: pageUrl,
+          width: viewport.width,
+          height: viewport.height,
+        })
+      }
+
+      setPdfPages(pages)
+    } catch (error) {
+      console.error('PDF render error:', error)
+      setPdfError(error instanceof Error ? error.message : '渲染 PDF 時發生錯誤')
+    } finally {
+      setPdfLoading(false)
+    }
+  }
+
+  const closeViewer = () => {
+    setActiveViewerUrl(null)
+    setActiveViewerTitle('')
+    setIsPdfMaximized(false)
+    setPdfPages([])
+    setPdfError(null)
   }
 
   if (items.length === 0) {
@@ -32,25 +111,222 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
     )
   }
 
-  return (
+  // 圖示檢視 - Grid of cards with thumbnails
+  const renderGridView = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {items.map((item) => (
+        <div
+          key={item.id}
+          className="border rounded-lg p-3 hover:shadow-md transition-shadow bg-white cursor-pointer"
+          onClick={() => {
+            if (item.fileData) {
+              openViewer(item)
+            } else {
+              setSelectedItem(item)
+            }
+          }}
+        >
+          {/* 縮圖預覽 - 點擊直接開啟檔案 */}
+          <div
+            className="mb-3 cursor-pointer"
+            onClick={() => {
+              if (item.fileData) {
+                openViewer(item)
+              } else {
+                setSelectedItem(item)
+              }
+            }}
+          >
+            {item.source === 'image' && item.fileData ? (
+              <img
+                src={item.fileData}
+                alt={item.title}
+                className="w-full h-24 object-cover rounded border hover:opacity-90 transition-opacity"
+              />
+            ) : item.source === 'pdf' && item.fileData ? (
+              <div className="w-full h-24 bg-gray-100 rounded border flex items-center justify-center hover:bg-gray-200 transition-colors">
+                <FileText className="h-8 w-8 text-gray-400" />
+              </div>
+            ) : (
+              <div
+                className="w-full h-24 bg-gray-100 rounded border flex items-center justify-center cursor-default"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSelectedItem(item)
+                }}
+              >
+                <FileText className="h-8 w-8 text-gray-400" />
+              </div>
+            )}
+          </div>
+
+          <h3
+            className="text-sm font-semibold text-gray-800 line-clamp-1 mb-1 cursor-pointer"
+            onClick={() => {
+              if (item.fileData) {
+                openViewer(item)
+              } else {
+                setSelectedItem(item)
+              }
+            }}
+          >
+            {item.title}
+          </h3>
+
+          {item.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {item.tags.slice(0, 3).map((tag) => (
+                <span
+                  key={tag}
+                  className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full"
+                >
+                  {tag}
+                </span>
+              ))}
+              {item.tags.length > 3 && (
+                <span className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">
+                  +{item.tags.length - 3}
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span>{new Date(item.updatedAt).toLocaleDateString('zh-TW')}</span>
+            <div className="flex gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit(item)
+                }}
+                className="p-0.5 text-gray-500 hover:text-blue-600 rounded"
+                title="編輯"
+              >
+                <Edit className="h-3 w-3" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDelete(item.id, item.title)
+                }}
+                className="p-0.5 text-gray-500 hover:text-red-600 rounded"
+                title="刪除"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+
+  // 並排檢視 - List with side-by-side layout
+  const renderListView = () => (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <div
+          key={item.id}
+          className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white flex gap-4 items-center"
+        >
+          {/* 左側縮圖 */}
+          <div className="flex-shrink-0">
+            {item.source === 'image' && item.fileData ? (
+              <img
+                src={item.fileData}
+                alt={item.title}
+                className="w-20 h-20 object-cover rounded border cursor-pointer"
+                onClick={() => openViewer(item)}
+              />
+            ) : item.source === 'pdf' && item.fileData ? (
+              <div
+                className="w-20 h-20 bg-gray-100 rounded border flex items-center justify-center cursor-pointer"
+                onClick={() => openViewer(item)}
+              >
+                <FileText className="h-8 w-8 text-gray-400" />
+              </div>
+            ) : (
+              <div className="w-20 h-20 bg-gray-100 rounded border flex items-center justify-center">
+                <FileText className="h-8 w-8 text-gray-400" />
+              </div>
+            )}
+          </div>
+
+          {/* 中間內容 */}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-semibold text-gray-800 line-clamp-1">
+              {item.title}
+            </h3>
+            <div
+              className="text-gray-600 text-sm mb-2 line-clamp-2"
+              dangerouslySetInnerHTML={{
+                __html: marked(item.content.substring(0, 200)) as string
+              }}
+            />
+            <div className="flex items-center gap-4 text-xs text-gray-500">
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {new Date(item.updatedAt).toLocaleDateString('zh-TW')}
+              </span>
+              {item.sourceFile && (
+                <span className="text-blue-600">來源: {item.sourceFile}</span>
+              )}
+              {item.tags.length > 0 && (
+                <span className="flex items-center gap-1">
+                  <Tag className="h-3 w-3" />
+                  {item.tags.join(', ')}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* 右側操作 */}
+          <div className="flex gap-2 flex-shrink-0">
+            {item.fileData && (
+              <button
+                onClick={() => openViewer(item)}
+                className="p-1 text-gray-500 hover:text-blue-600 rounded"
+                title={item.source === 'image' ? '檢視圖片' : '檢視原始 PDF'}
+              >
+                <Eye className="h-4 w-4" />
+              </button>
+            )}
+            <button
+              onClick={() => onEdit(item)}
+              className="p-1 text-gray-500 hover:text-blue-600 rounded"
+              title="編輯"
+            >
+              <Edit className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => handleDelete(item.id, item.title)}
+              className="p-1 text-gray-500 hover:text-red-600 rounded"
+              title="刪除"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+
+  // 詳細資料檢視 - Full detail with expandable content
+  const renderDetailView = () => (
     <div className="space-y-4">
       {items.map((item) => (
         <div
           key={item.id}
           className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
         >
-          <div className="flex justify-between items-start mb-2">
-            <h3 className="text-lg font-semibold text-gray-800 line-clamp-1">
+          <div className="flex justify-between items-start mb-3">
+            <h3 className="text-xl font-semibold text-gray-800 line-clamp-1 flex-1">
               {item.title}
             </h3>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0 ml-4">
               {item.fileData && (
                 <button
-                  onClick={() => {
-                    setActiveViewerUrl(item.fileData!)
-                    setActiveViewerTitle(item.title)
-                    setActiveViewerType(item.source === 'image' ? 'image' : 'pdf')
-                  }}
+                  onClick={() => openViewer(item)}
                   className="p-1 text-gray-500 hover:text-blue-600 rounded"
                   title={item.source === 'image' ? '檢視圖片' : '檢視原始 PDF'}
                 >
@@ -74,15 +350,11 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
             </div>
           </div>
 
-          {/* 圖片縮圖預覽 */}
-          {item.source === 'image' && item.fileData ? (
+          {/* 圖片縮圖 */}
+          {item.source === 'image' && item.fileData && (
             <div
               className="mb-3 cursor-pointer rounded overflow-hidden"
-              onClick={() => {
-                setActiveViewerUrl(item.fileData!)
-                setActiveViewerTitle(item.title)
-                setActiveViewerType('image')
-              }}
+              onClick={() => openViewer(item)}
             >
               <img
                 src={item.fileData}
@@ -90,49 +362,60 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
                 className="max-h-48 w-auto rounded border hover:opacity-90 transition-opacity object-contain"
               />
             </div>
-          ) : (
-            <div
-              className="text-gray-600 text-sm mb-3 line-clamp-3 prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{
-                __html: marked(item.content.substring(0, 500)) as string
-              }}
-            />
           )}
 
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                {new Date(item.updatedAt).toLocaleDateString('zh-TW')}
-              </span>
-              {item.sourceFile && (
-                item.fileData ? (
-                  <button
-                    onClick={() => {
-                      setActiveViewerUrl(item.fileData!)
-                      setActiveViewerTitle(item.title)
-                      setActiveViewerType(item.source === 'image' ? 'image' : 'pdf')
-                    }}
-                    className="text-blue-600 hover:text-blue-800 hover:underline font-medium flex items-center gap-1"
-                    title={item.source === 'image' ? '點擊檢視圖片' : '點擊檢視原始 PDF 檔案'}
-                  >
-                    來源: {item.sourceFile}
-                  </button>
-                ) : (
-                  <span className="text-blue-600">來源: {item.sourceFile}</span>
-                )
-              )}
+          {/* 內容預覽 */}
+          <div
+            className="text-gray-600 text-sm mb-3 line-clamp-6 prose prose-sm max-w-none"
+            dangerouslySetInnerHTML={{
+              __html: marked(item.content.substring(0, 1000)) as string
+            }}
+          />
+
+          {/* 元資料 */}
+          <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 pt-2 border-t">
+            <div className="flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              <span>建立: {new Date(item.createdAt).toLocaleDateString('zh-TW')}</span>
             </div>
+            <div className="flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              <span>更新: {new Date(item.updatedAt).toLocaleDateString('zh-TW')}</span>
+            </div>
+            {item.sourceFile && (
+              <span className="flex items-center gap-1">
+                <FileText className="h-3 w-3" />
+                來源: {item.sourceFile}
+              </span>
+            )}
             {item.tags.length > 0 && (
               <div className="flex items-center gap-1">
                 <Tag className="h-3 w-3" />
-                <span>{item.tags.join(', ')}</span>
+                <div className="flex flex-wrap gap-1">
+                  {item.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </div>
         </div>
       ))}
+    </div>
+  )
 
+  return (
+    <>
+      {viewMode === 'grid' && renderGridView()}
+      {viewMode === 'list' && renderListView()}
+      {viewMode === 'detail' && renderDetailView()}
+
+      {/* PDF/圖片檢視器 */}
       {activeViewerUrl && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-all duration-300"
           style={{ padding: isPdfMaximized ? 0 : '1rem' }}
@@ -169,11 +452,7 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
                   )}
                 </button>
                 <button
-                  onClick={() => {
-                    setActiveViewerUrl(null)
-                    setActiveViewerTitle('')
-                    setIsPdfMaximized(false)
-                  }}
+                  onClick={closeViewer}
                   className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                   title="關閉"
                 >
@@ -181,7 +460,7 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
                 </button>
               </div>
             </div>
-            <div className="flex-1 bg-gray-100 overflow-hidden flex items-center justify-center">
+            <div className="flex-1 bg-gray-100 overflow-auto flex flex-col items-center">
               {activeViewerType === 'image' ? (
                 <img
                   src={activeViewerUrl}
@@ -189,16 +468,58 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
                   className="max-w-full max-h-full object-contain p-2"
                 />
               ) : (
-                <iframe
-                  src={activeViewerUrl}
-                  title={activeViewerTitle}
-                  className="w-full h-full border-0"
-                />
+                <>
+                  {pdfLoading && (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <span className="ml-2 text-gray-600">渲染 PDF 中...</span>
+                    </div>
+                  )}
+
+                  {pdfError && (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <AlertCircle className="h-12 w-12 text-red-400 mb-2" />
+                      <p className="text-gray-600 mb-4">{pdfError}</p>
+                      <a
+                        href={activeViewerUrl}
+                        download={activeViewerTitle}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        下載 PDF
+                      </a>
+                    </div>
+                  )}
+
+                  {!pdfLoading && !pdfError && pdfPages.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <AlertCircle className="h-12 w-12 text-gray-400 mb-2" />
+                      <p className="text-gray-600 mb-4">無法渲染此 PDF，請下載檢視</p>
+                      <a
+                        href={activeViewerUrl}
+                        download={activeViewerTitle}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        下載 PDF
+                      </a>
+                    </div>
+                  )}
+
+                  {!pdfLoading && pdfPages.map((page, idx) => (
+                    <img
+                      key={idx}
+                      src={page.url}
+                      alt={`PDF 第 ${idx + 1} 頁`}
+                      className="max-w-full mb-2 shadow-sm"
+                    />
+                  ))}
+                </>
               )}
             </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
