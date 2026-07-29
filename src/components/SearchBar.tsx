@@ -24,6 +24,19 @@ export const SearchBar: React.FC = () => {
     setSearchFilters({ tags: [] })
   }
 
+  const clearQuery = () => {
+    setSearchFilters({ query: '' })
+  }
+
+  const clearAll = () => {
+    setSearchFilters({
+      query: '',
+      tags: [],
+      sortBy: 'updatedAt',
+      sortOrder: 'desc',
+    })
+  }
+
   const handleSortByChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSearchFilters({ sortBy: e.target.value as 'createdAt' | 'updatedAt' | 'title' })
   }
@@ -47,9 +60,32 @@ export const SearchBar: React.FC = () => {
           value={searchFilters.query}
           onChange={(e) => setSearchFilters({ query: e.target.value })}
           placeholder="搜尋知識項目..."
-          className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full pl-10 pr-10 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+        {searchFilters.query && (
+          <button
+            onClick={clearQuery}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded transition-colors"
+            title="清除搜尋"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
+
+      {/* 清除所有篩選 */}
+      {(searchFilters.query || searchFilters.tags.length > 0) && (
+        <div className="flex justify-end">
+          <button
+            onClick={clearAll}
+            className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 px-2 py-1 border border-gray-200 rounded-md hover:bg-gray-100 transition-colors"
+            title="清除所有搜尋和篩選"
+          >
+            <X className="h-3 w-3" />
+            清除全部
+          </button>
+        </div>
+      )}
 
       {/* 排序控制 */}
       <div className="flex items-center gap-2">
