@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useKnowledgeStore } from '../store/knowledgeStore'
 import type { KnowledgeItem, SourceType } from '../types'
 import { processFile } from '../utils/fileProcessor'
-import { X, Save, Plus, Eye, Edit3, Folder, FileUp, FileText, AlertCircle, Loader2 } from 'lucide-react'
+import { X, Save, Plus, Eye, Edit3, Folder, FileUp, FileText, AlertCircle, Loader2, Star } from 'lucide-react'
 import { marked } from 'marked'
 
 interface KnowledgeEditorProps {
@@ -16,11 +16,12 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
   onClose,
   onSave,
 }) => {
-  const { addItem, updateItem, getCategories } = useKnowledgeStore()
+  const { addItem, updateItem, getCategories, toggleFavorite } = useKnowledgeStore()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [tags, setTags] = useState('')
   const [notes, setNotes] = useState('')
+  const [isFavorite, setIsFavorite] = useState(false)
   const [category, setCategory] = useState('')
   const [customCategory, setCustomCategory] = useState('')
   const [editorMode, setEditorMode] = useState<'edit' | 'preview'>('edit')
@@ -40,6 +41,7 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
       setContent(item.content)
       setTags(item.tags.join(', '))
       setNotes(item.notes || '')
+      setIsFavorite(item.isFavorite || false)
       setCategory(item.category || '')
       setSource(item.source)
       setFileData(item.fileData)
@@ -154,6 +156,7 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
         fileData,
         fileDataList,
         notes: finalNotes,
+        isFavorite,
       })
     } else {
       addItem({
@@ -166,6 +169,7 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
         fileData,
         fileDataList,
         notes: finalNotes,
+        isFavorite,
       })
     }
 
@@ -179,12 +183,28 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
           <h2 className="text-xl font-bold">
             {item ? '編輯知識項目' : '新增知識項目'}
           </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            {item && (
+              <button
+                type="button"
+                onClick={() => toggleFavorite(item.id)}
+                className={`p-2 rounded-full transition-colors ${
+                  isFavorite
+                    ? 'text-yellow-500 hover:text-yellow-600 bg-yellow-100'
+                    : 'text-gray-400 hover:text-yellow-500 hover:bg-gray-100'
+                }`}
+                title={isFavorite ? '取消收藏' : '收藏'}
+              >
+                <Star className={`h-5 w-5 ${isFavorite ? 'fill-current' : ''}`} />
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-full"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">

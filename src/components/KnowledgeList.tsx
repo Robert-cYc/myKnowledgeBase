@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useKnowledgeStore } from '../store/knowledgeStore'
 import type { KnowledgeItem } from '../types'
-import { FileText, Edit, Trash2, Calendar, Tag, Eye, X, Download, AlertCircle, Folder, Play, File } from 'lucide-react'
+import { FileText, Edit, Trash2, Calendar, Tag, Eye, X, Download, AlertCircle, Folder, Play, File, Star } from 'lucide-react'
 import { marked } from 'marked'
 
 interface KnowledgeListProps {
@@ -9,7 +9,7 @@ interface KnowledgeListProps {
 }
 
 export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
-  const { getFilteredItems, deleteItem, setSelectedItem, viewMode } = useKnowledgeStore()
+  const { getFilteredItems, deleteItem, setSelectedItem, viewMode, toggleFavorite } = useKnowledgeStore()
   const [activeViewerUrl, setActiveViewerUrl] = useState<string | null>(null)
   const [activeViewerTitle, setActiveViewerTitle] = useState<string>('')
   const [activeViewerType, setActiveViewerType] = useState<'pdf' | 'image' | 'video' | 'document'>('pdf')
@@ -235,6 +235,20 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
               <button
                 onClick={(e) => {
                   e.stopPropagation()
+                  toggleFavorite(item.id)
+                }}
+                className={`p-0.5 rounded transition-colors ${
+                  item.isFavorite
+                    ? 'text-yellow-500 hover:text-yellow-600'
+                    : 'text-gray-400 hover:text-yellow-500'
+                }`}
+                title={item.isFavorite ? '取消收藏' : '收藏'}
+              >
+                <Star className={`h-3 w-3 ${item.isFavorite ? 'fill-current' : ''}`} />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
                   onEdit(item)
                 }}
                 className="p-0.5 text-gray-500 hover:text-blue-600 rounded"
@@ -350,6 +364,17 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
 
           {/* 右側操作 */}
           <div className="flex gap-2 flex-shrink-0">
+            <button
+              onClick={() => toggleFavorite(item.id)}
+              className={`p-1 rounded transition-colors ${
+                item.isFavorite
+                  ? 'text-yellow-500 hover:text-yellow-600'
+                  : 'text-gray-400 hover:text-yellow-500'
+              }`}
+              title={item.isFavorite ? '取消收藏' : '收藏'}
+            >
+              <Star className={`h-4 w-4 ${item.isFavorite ? 'fill-current' : ''}`} />
+            </button>
             {item.fileData && (
               <button
                 onClick={() => openViewer(item)}
@@ -397,6 +422,17 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
               {item.title}
             </h3>
             <div className="flex gap-2 flex-shrink-0 ml-4">
+              <button
+                onClick={() => toggleFavorite(item.id)}
+                className={`p-1 rounded transition-colors ${
+                  item.isFavorite
+                    ? 'text-yellow-500 hover:text-yellow-600'
+                    : 'text-gray-400 hover:text-yellow-500'
+                }`}
+                title={item.isFavorite ? '取消收藏' : '收藏'}
+              >
+                <Star className={`h-4 w-4 ${item.isFavorite ? 'fill-current' : ''}`} />
+              </button>
               {item.fileData && (
                 <button
                   onClick={() => openViewer(item)}

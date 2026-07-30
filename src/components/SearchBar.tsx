@@ -1,6 +1,6 @@
 import React from 'react'
 import { useKnowledgeStore } from '../store/knowledgeStore'
-import { Search, Tags, X, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, List, LayoutList, Folder } from 'lucide-react'
+import { Search, Tags, X, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, List, LayoutList, Folder, Star } from 'lucide-react'
 import type { ViewMode } from '../types'
 
 export const SearchBar: React.FC = () => {
@@ -36,6 +36,7 @@ export const SearchBar: React.FC = () => {
       query: '',
       tags: [],
       category: undefined,
+      showFavorites: false,
       sortBy: 'updatedAt',
       sortOrder: 'desc',
     })
@@ -94,8 +95,23 @@ export const SearchBar: React.FC = () => {
         </div>
       )}
 
+      {/* 收藏篩選 */}
+      <div className="flex items-center gap-2">
+        <Star className="h-4 w-4 text-gray-400 flex-shrink-0" />
+        <button
+          onClick={() => setSearchFilters({ showFavorites: !searchFilters.showFavorites })}
+          className={`flex-1 text-sm px-2 py-1 rounded-md transition-colors ${
+            searchFilters.showFavorites
+              ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          {searchFilters.showFavorites ? '顯示全部' : '僅收藏'}
+        </button>
+      </div>
+
       {/* 清除所有篩選 */}
-      {(searchFilters.query || searchFilters.tags.length > 0 || searchFilters.category) && (
+      {(searchFilters.query || searchFilters.tags.length > 0 || searchFilters.category || searchFilters.showFavorites) && (
         <div className="flex justify-end">
           <button
             onClick={clearAll}

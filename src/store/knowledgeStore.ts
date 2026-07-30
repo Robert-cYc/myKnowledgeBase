@@ -112,6 +112,7 @@ interface KnowledgeState {
   renameCategory: (oldCategory: string, newCategory: string) => void
   deleteCategory: (category: string) => void
   getCategories: () => Array<{ category: string; count: number }>
+  toggleFavorite: (id: string) => void
 }
 
 export const useKnowledgeStore = create<KnowledgeState>()(
@@ -122,6 +123,7 @@ export const useKnowledgeStore = create<KnowledgeState>()(
         query: '',
         tags: [],
         category: undefined,
+        showFavorites: false,
         sortBy: 'updatedAt',
         sortOrder: 'desc',
       },
@@ -207,6 +209,11 @@ export const useKnowledgeStore = create<KnowledgeState>()(
         // 分類篩選
         if (searchFilters.category) {
           filtered = filtered.filter((item) => item.category === searchFilters.category)
+        }
+
+        // 收藏篩選
+        if (searchFilters.showFavorites) {
+          filtered = filtered.filter((item) => item.isFavorite)
         }
 
         // 排序
@@ -385,6 +392,16 @@ export const useKnowledgeStore = create<KnowledgeState>()(
         return Object.entries(categoryCounts)
           .map(([category, count]) => ({ category, count }))
           .sort((a, b) => b.count - a.count)
+      },
+
+      toggleFavorite: (id) => {
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.id === id
+              ? { ...item, isFavorite: !item.isFavorite, updatedAt: new Date().toISOString() }
+              : item
+          ),
+        }))
       },
     }),
     {

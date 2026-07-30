@@ -1,0 +1,35 @@
+[33mcommit 56440fd9822712b8621e23664d0d36420a673fd2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Robert-cYc <cai100.cyc@gmail.com>
+Date:   Thu Jul 30 11:16:52 2026 +0800
+
+    add notes col. and be able to search notes
+
+[33mcommit d7af50f36c0d9633cfac030a4725a65234d43645[m
+Author: Robert-cYc <cai100.cyc@gmail.com>
+Date:   Thu Jul 30 09:33:38 2026 +0800
+
+    add tag manager
+
+[33mcommit 0bdad5372efd04e61630cc163651473edc68b2bb[m
+Author: Robert-cYc <cai100.cyc@gmail.com>
+Date:   Wed Jul 29 15:35:45 2026 +0800
+
+    DB working on it
+
+[33mcommit 2d82539bcf9f5d646e489698f331683cce3f0898[m
+Author: Robert-cYc <cai100.cyc@gmail.com>
+Date:   Wed Jul 29 13:42:26 2026 +0800
+
+    add clear button for search
+
+[33mcommit 1dd53c7e4bcef2e27ae61de66dc32c5596490807[m
+Author: Robert-cYc <cai100.cyc@gmail.com>
+Date:   Wed Jul 29 13:27:08 2026 +0800
+
+    add list view function and pdf view bug fixed
+
+[33mcommit 769d960d002c5b383c49e96ad838bc52845d2858[m
+Author: Robert-cYc <cai100.cyc@gmail.com>
+Date:   Wed Jul 29 09:53:31 2026 +0800
+
+    Knowledgebase works

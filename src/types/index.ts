@@ -11,6 +11,7 @@ export interface KnowledgeItem {
   fileData?: string
   fileDataList?: string[]
   notes?: string
+  isFavorite?: boolean
   createdAt: string
   updatedAt: string
 }
@@ -19,6 +20,7 @@ export interface SearchFilters {
   query: string
   tags: string[]
   category?: string
+  showFavorites?: boolean
   sortBy: 'createdAt' | 'updatedAt' | 'title'
   sortOrder: 'asc' | 'desc'
 }
