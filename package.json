@@ -13,10 +13,12 @@
   "dependencies": {
     "@tailwindcss/typography": "^0.5.20",
     "lucide-react": "^0.400.0",
+    "mammoth": "^1.12.0",
     "marked": "^12.0.0",
     "pdfjs-dist": "^4.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "xlsx": "^0.18.5",
     "zustand": "^4.5.0"
   },
   "devDependencies": {

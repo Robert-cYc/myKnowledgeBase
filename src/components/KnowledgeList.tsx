@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useKnowledgeStore } from '../store/knowledgeStore'
 import type { KnowledgeItem } from '../types'
-import { FileText, Edit, Trash2, Calendar, Tag, Eye, X, Download, AlertCircle, Folder } from 'lucide-react'
+import { FileText, Edit, Trash2, Calendar, Tag, Eye, X, Download, AlertCircle, Folder, Play, File } from 'lucide-react'
 import { marked } from 'marked'
 
 interface KnowledgeListProps {
@@ -12,7 +12,7 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
   const { getFilteredItems, deleteItem, setSelectedItem, viewMode } = useKnowledgeStore()
   const [activeViewerUrl, setActiveViewerUrl] = useState<string | null>(null)
   const [activeViewerTitle, setActiveViewerTitle] = useState<string>('')
-  const [activeViewerType, setActiveViewerType] = useState<'pdf' | 'image'>('pdf')
+  const [activeViewerType, setActiveViewerType] = useState<'pdf' | 'image' | 'video' | 'document'>('pdf')
   const [activeViewerFileDataList, setActiveViewerFileDataList] = useState<string[]>([])
   const [activePdfIndex, setActivePdfIndex] = useState(0)
   const [isPdfMaximized, setIsPdfMaximized] = useState(false)
@@ -32,7 +32,12 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
     if (item.fileData) {
       setActiveViewerUrl(item.fileData)
       setActiveViewerTitle(item.title)
-      setActiveViewerType(item.source === 'image' ? 'image' : 'pdf')
+      setActiveViewerType(
+        item.source === 'image' ? 'image'
+        : item.source === 'video' ? 'video'
+        : item.source === 'document' ? 'document'
+        : 'pdf'
+      )
       setActiveViewerFileDataList(item.fileDataList || [item.fileData])
       setActivePdfIndex(0)
 
@@ -154,6 +159,14 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
                 alt={item.title}
                 className="w-full h-24 object-cover rounded border hover:opacity-90 transition-opacity"
               />
+            ) : item.source === 'video' && item.fileData ? (
+              <div className="relative w-full h-24 bg-gray-100 rounded border flex items-center justify-center hover:bg-gray-200 transition-colors">
+                <Play className="h-8 w-8 text-gray-400" />
+              </div>
+            ) : item.source === 'document' && item.fileData ? (
+              <div className="relative w-full h-24 bg-gray-100 rounded border flex items-center justify-center hover:bg-gray-200 transition-colors">
+                <File className="h-8 w-8 text-gray-400" />
+              </div>
             ) : item.source === 'pdf' && item.fileData ? (
               <div className="relative w-full h-24 bg-gray-100 rounded border flex items-center justify-center hover:bg-gray-200 transition-colors">
                 <FileText className="h-8 w-8 text-gray-400" />
@@ -263,6 +276,20 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
                 className="w-20 h-20 object-cover rounded border cursor-pointer"
                 onClick={() => openViewer(item)}
               />
+            ) : item.source === 'video' && item.fileData ? (
+              <div
+                className="relative w-20 h-20 bg-gray-100 rounded border flex items-center justify-center cursor-pointer"
+                onClick={() => openViewer(item)}
+              >
+                <Play className="h-8 w-8 text-gray-400" />
+              </div>
+            ) : item.source === 'document' && item.fileData ? (
+              <div
+                className="relative w-20 h-20 bg-gray-100 rounded border flex items-center justify-center cursor-pointer"
+                onClick={() => openViewer(item)}
+              >
+                <File className="h-8 w-8 text-gray-400" />
+              </div>
             ) : item.source === 'pdf' && item.fileData ? (
               <div
                 className="relative w-20 h-20 bg-gray-100 rounded border flex items-center justify-center cursor-pointer"
@@ -293,6 +320,11 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
                 __html: marked(item.content.substring(0, 200)) as string
               }}
             />
+            {item.notes && (
+              <div className="text-xs text-yellow-700 mb-2 line-clamp-1">
+                📝 {item.notes}
+              </div>
+            )}
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
@@ -322,7 +354,12 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
               <button
                 onClick={() => openViewer(item)}
                 className="p-1 text-gray-500 hover:text-blue-600 rounded"
-                title={item.source === 'image' ? '檢視圖片' : '檢視原始 PDF'}
+                title={
+                  item.source === 'image' ? '檢視圖片'
+                  : item.source === 'video' ? '播放影片'
+                  : item.source === 'document' ? '下載文檔'
+                  : '檢視原始 PDF'
+                }
               >
                 <Eye className="h-4 w-4" />
               </button>
@@ -364,7 +401,12 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
                 <button
                   onClick={() => openViewer(item)}
                   className="p-1 text-gray-500 hover:text-blue-600 rounded"
-                  title={item.source === 'image' ? '檢視圖片' : '檢視原始 PDF'}
+                  title={
+                    item.source === 'image' ? '檢視圖片'
+                    : item.source === 'video' ? '播放影片'
+                    : item.source === 'document' ? '下載文檔'
+                    : '檢視原始 PDF'
+                  }
                 >
                   <Eye className="h-4 w-4" />
                 </button>
@@ -400,6 +442,26 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
             </div>
           )}
 
+          {/* 影片縮圖 */}
+          {item.source === 'video' && item.fileData && (
+            <div
+              className="mb-3 cursor-pointer rounded overflow-hidden flex items-center justify-center bg-gray-100 hover:bg-gray-200 transition-colors"
+              onClick={() => openViewer(item)}
+            >
+              <Play className="h-12 w-12 text-gray-400" />
+            </div>
+          )}
+
+          {/* 文檔縮圖 */}
+          {item.source === 'document' && item.fileData && (
+            <div
+              className="mb-3 cursor-pointer rounded overflow-hidden flex items-center justify-center bg-gray-100 hover:bg-gray-200 transition-colors"
+              onClick={() => openViewer(item)}
+            >
+              <File className="h-12 w-12 text-gray-400" />
+            </div>
+          )}
+
           {/* 內容預覽 */}
           <div
             className="text-gray-600 text-sm mb-3 line-clamp-6 prose prose-sm max-w-none"
@@ -407,6 +469,14 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
               __html: marked(item.content.substring(0, 1000)) as string
             }}
           />
+
+          {/* 備註 */}
+          {item.notes && (
+            <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+              <span className="text-xs font-medium text-yellow-800">備註：</span>
+              <span className="text-xs text-gray-700">{item.notes}</span>
+            </div>
+          )}
 
           {/* 元資料 */}
           <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 pt-2 border-t">
@@ -524,6 +594,26 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
                   alt={activeViewerTitle}
                   className="max-w-full max-h-full object-contain p-2"
                 />
+              ) : activeViewerType === 'video' ? (
+                <video
+                  src={activeViewerUrl}
+                  controls
+                  className="max-w-full max-h-full object-contain p-2"
+                  autoPlay
+                />
+              ) : activeViewerType === 'document' ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <File className="h-16 w-16 text-gray-400 mb-4" />
+                  <p className="text-gray-600 mb-4">此文檔無法在瀏覽器中預覽</p>
+                  <a
+                    href={activeViewerUrl}
+                    download={activeViewerTitle}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    下載文檔
+                  </a>
+                </div>
               ) : (
                 <>
                   {pdfLoading && (

@@ -95,6 +95,45 @@ export const extractTextFromMarkdown = async (file: File): Promise<string> => {
   return text
 }
 
+export const extractTextFromTxt = async (file: File): Promise<string> => {
+  return await file.text()
+}
+
+export const extractTextFromDocx = async (file: File): Promise<string> => {
+  const mammoth = await import('mammoth')
+  const arrayBuffer = await file.arrayBuffer()
+  const result = await mammoth.extractRawText({ arrayBuffer })
+  return result.value
+}
+
+export const extractTextFromPptx = async (file: File): Promise<string> => {
+  const mammoth = await import('mammoth')
+  const arrayBuffer = await file.arrayBuffer()
+  const result = await mammoth.extractRawText({ arrayBuffer })
+  return result.value
+}
+
+export const extractTextFromXlsx = async (file: File): Promise<string> => {
+  const XLSX = await import('xlsx')
+  const arrayBuffer = await file.arrayBuffer()
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+  const lines: string[] = []
+
+  for (const sheetName of workbook.SheetNames) {
+    lines.push(`## ${sheetName}`)
+    const worksheet = workbook.Sheets[sheetName]
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][]
+    for (const row of jsonData) {
+      if (row && row.some((cell) => cell != null)) {
+        lines.push(row.map((cell) => (cell != null ? String(cell) : '')).join('\t'))
+      }
+    }
+    lines.push('')
+  }
+
+  return lines.join('\n')
+}
+
 export const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -116,6 +155,10 @@ export const getMarkdownTitle = (content: string): string => {
 }
 
 export const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp']
+
+export const VIDEO_EXTENSIONS = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv']
+
+export const DOCUMENT_EXTENSIONS = ['txt', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']
 
 export interface ProcessedFile {
   content: string
@@ -147,8 +190,31 @@ export const processFile = async (file: File): Promise<ProcessedFile> => {
     title = file.name.replace(/\.[^.]+$/, '') || '未命名'
     fileData = await fileToBase64(file)
     content = `# ${title}\n\n![${title}](${fileData})\n`
+  } else if (VIDEO_EXTENSIONS.includes(fileExtension ?? '')) {
+    source = 'video'
+    title = file.name.replace(/\.[^.]+$/, '') || '未命名'
+    fileData = await fileToBase64(file)
+    content = `# ${title}\n\n<video controls width="100%" src="${fileData}"></video>\n`
+  } else if (DOCUMENT_EXTENSIONS.includes(fileExtension ?? '')) {
+    source = 'document'
+    title = file.name.replace(/\.[^.]+$/, '') || '未命名'
+    fileData = await fileToBase64(file)
+
+    if (fileExtension === 'txt') {
+      content = await extractTextFromTxt(file)
+    } else if (fileExtension === 'docx' || fileExtension === 'doc') {
+      content = await extractTextFromDocx(file)
+    } else if (fileExtension === 'pptx' || fileExtension === 'ppt') {
+      content = await extractTextFromPptx(file)
+    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      content = await extractTextFromXlsx(file)
+    } else {
+      throw new Error('不支援的文檔格式')
+    }
+
+    content = `# ${title}\n\n${content}`
   } else {
-    throw new Error('不支援的檔案格式（支援：PDF、Markdown、圖片）')
+    throw new Error('不支援的檔案格式（支援：PDF、Markdown、圖片、影片、文檔）')
   }
 
   if (!content.trim()) {
@@ -211,7 +277,7 @@ export const processFiles = async (files: File[]): Promise<{
       })
       .join('\n\n')
     combinedTitle = results[0].title
-    primarySource = results.find((r) => r.source === 'pdf')?.source || results[0].source
+    primarySource = results.find((r) => r.source === 'pdf' || r.source === 'document')?.source || results[0].source
     fileDataList = results.filter((r) => r.fileData).map((r) => r.fileData!)
     primaryFileData = fileDataList[0]
     sourceFiles = results.map((r) => r.fileName)

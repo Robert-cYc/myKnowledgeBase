@@ -20,6 +20,7 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [tags, setTags] = useState('')
+  const [notes, setNotes] = useState('')
   const [category, setCategory] = useState('')
   const [customCategory, setCustomCategory] = useState('')
   const [editorMode, setEditorMode] = useState<'edit' | 'preview'>('edit')
@@ -38,6 +39,7 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
       setTitle(item.title)
       setContent(item.content)
       setTags(item.tags.join(', '))
+      setNotes(item.notes || '')
       setCategory(item.category || '')
       setSource(item.source)
       setFileData(item.fileData)
@@ -139,6 +141,8 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
 
     const finalCategory = category === '__custom__' ? customCategory.trim() : category || undefined
 
+    const finalNotes = notes.trim() || undefined
+
     if (item) {
       updateItem(item.id, {
         title,
@@ -149,6 +153,7 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
         sourceFile,
         fileData,
         fileDataList,
+        notes: finalNotes,
       })
     } else {
       addItem({
@@ -160,6 +165,7 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
         sourceFile,
         fileData,
         fileDataList,
+        notes: finalNotes,
       })
     }
 
@@ -203,7 +209,7 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.md,.markdown,.jpg,.jpeg,.png,.gif,.webp,.svg,.bmp"
+              accept=".pdf,.md,.markdown,.jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.mp4,.webm,.ogg,.mov,.avi,.mkv,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
               multiple
               onChange={handleFileSelect}
               className="hidden"
@@ -226,7 +232,7 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
               <span className="text-sm text-gray-600">
                 {fileImportStatus === 'loading'
                   ? fileImportMessage
-                  : '點擊選擇檔案 (PDF、Markdown 或圖片)'}
+                  : '點擊選擇檔案 (PDF、Markdown、圖片、影片或文檔)'}
               </span>
             </label>
             {fileImportStatus === 'success' && (
@@ -297,6 +303,17 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
               onChange={(e) => setTags(e.target.value)}
               className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="標籤以逗號分隔，例如: 筆記,技術,學習"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">備註</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={3}
+              placeholder="輸入備註資訊（選填）"
             />
           </div>
 

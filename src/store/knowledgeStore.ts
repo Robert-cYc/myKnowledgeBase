@@ -192,7 +192,8 @@ export const useKnowledgeStore = create<KnowledgeState>()(
           filtered = filtered.filter(
             (item) =>
               item.title.toLowerCase().includes(query) ||
-              item.content.toLowerCase().includes(query)
+              item.content.toLowerCase().includes(query) ||
+              (item.notes?.toLowerCase().includes(query) ?? false)
           )
         }
 

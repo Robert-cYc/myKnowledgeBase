@@ -62,7 +62,7 @@ export const FileImporter: React.FC = () => {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.md,.markdown,.jpg,.jpeg,.png,.gif,.webp,.svg,.bmp"
+          accept=".pdf,.md,.markdown,.jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.mp4,.webm,.ogg,.mov,.avi,.mkv,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
           multiple
           onChange={handleFileImport}
           className="hidden"
@@ -84,7 +84,7 @@ export const FileImporter: React.FC = () => {
             <FileText className="h-5 w-5 text-gray-400" />
           )}
           <span className="text-sm text-gray-600">
-            {importStatus === 'loading' ? statusMessage : '點擊選擇檔案 (PDF、Markdown 或圖片)'}
+            {importStatus === 'loading' ? statusMessage : '點擊選擇檔案 (PDF、Markdown、圖片、影片或文檔)'}
           </span>
         </label>
 

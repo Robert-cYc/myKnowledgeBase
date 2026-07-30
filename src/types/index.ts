@@ -1,4 +1,4 @@
-export type SourceType = 'manual' | 'pdf' | 'markdown' | 'image'
+export type SourceType = 'manual' | 'pdf' | 'markdown' | 'image' | 'video' | 'document'
 
 export interface KnowledgeItem {
   id: string
@@ -10,6 +10,7 @@ export interface KnowledgeItem {
   sourceFile?: string
   fileData?: string
   fileDataList?: string[]
+  notes?: string
   createdAt: string
   updatedAt: string
 }
