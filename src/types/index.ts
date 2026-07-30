@@ -9,6 +9,7 @@ export interface KnowledgeItem {
   source: SourceType
   sourceFile?: string
   fileData?: string
+  fileDataList?: string[]
   createdAt: string
   updatedAt: string
 }

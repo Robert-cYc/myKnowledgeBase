@@ -13,6 +13,8 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
   const [activeViewerUrl, setActiveViewerUrl] = useState<string | null>(null)
   const [activeViewerTitle, setActiveViewerTitle] = useState<string>('')
   const [activeViewerType, setActiveViewerType] = useState<'pdf' | 'image'>('pdf')
+  const [activeViewerFileDataList, setActiveViewerFileDataList] = useState<string[]>([])
+  const [activePdfIndex, setActivePdfIndex] = useState(0)
   const [isPdfMaximized, setIsPdfMaximized] = useState(false)
   const [pdfPages, setPdfPages] = useState<Array<{ url: string; width: number; height: number }>>([])
   const [pdfLoading, setPdfLoading] = useState(false)
@@ -31,6 +33,8 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
       setActiveViewerUrl(item.fileData)
       setActiveViewerTitle(item.title)
       setActiveViewerType(item.source === 'image' ? 'image' : 'pdf')
+      setActiveViewerFileDataList(item.fileDataList || [item.fileData])
+      setActivePdfIndex(0)
 
       // 如果是 PDF，使用 canvas 渲染
       if (item.source === 'pdf') {
@@ -93,9 +97,16 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
     }
   }
 
+  const switchPdf = (index: number) => {
+    setActivePdfIndex(index)
+    renderPdfToCanvas(activeViewerFileDataList[index])
+  }
+
   const closeViewer = () => {
     setActiveViewerUrl(null)
     setActiveViewerTitle('')
+    setActiveViewerFileDataList([])
+    setActivePdfIndex(0)
     setIsPdfMaximized(false)
     setPdfPages([])
     setPdfError(null)
@@ -144,8 +155,13 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
                 className="w-full h-24 object-cover rounded border hover:opacity-90 transition-opacity"
               />
             ) : item.source === 'pdf' && item.fileData ? (
-              <div className="w-full h-24 bg-gray-100 rounded border flex items-center justify-center hover:bg-gray-200 transition-colors">
+              <div className="relative w-full h-24 bg-gray-100 rounded border flex items-center justify-center hover:bg-gray-200 transition-colors">
                 <FileText className="h-8 w-8 text-gray-400" />
+                {item.fileDataList && item.fileDataList.length > 1 && (
+                  <span className="absolute top-1 right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {item.fileDataList.length}
+                  </span>
+                )}
               </div>
             ) : (
               <div
@@ -249,10 +265,15 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
               />
             ) : item.source === 'pdf' && item.fileData ? (
               <div
-                className="w-20 h-20 bg-gray-100 rounded border flex items-center justify-center cursor-pointer"
+                className="relative w-20 h-20 bg-gray-100 rounded border flex items-center justify-center cursor-pointer"
                 onClick={() => openViewer(item)}
               >
                 <FileText className="h-8 w-8 text-gray-400" />
+                {item.fileDataList && item.fileDataList.length > 1 && (
+                  <span className="absolute top-0.5 right-0.5 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                    {item.fileDataList.length}
+                  </span>
+                )}
               </div>
             ) : (
               <div className="w-20 h-20 bg-gray-100 rounded border flex items-center justify-center">
@@ -449,7 +470,22 @@ export const KnowledgeList: React.FC<KnowledgeListProps> = ({ onEdit }) => {
             }`}
           >
             <div className="flex justify-between items-center p-3 border-b flex-shrink-0">
-              <h2 className="text-lg font-bold text-gray-800 line-clamp-1 mr-2">{activeViewerTitle}</h2>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <h2 className="text-lg font-bold text-gray-800 line-clamp-1">{activeViewerTitle}</h2>
+                {activeViewerType === 'pdf' && activeViewerFileDataList.length > 1 && (
+                  <select
+                    value={activePdfIndex}
+                    onChange={(e) => switchPdf(Number(e.target.value))}
+                    className="text-xs border rounded px-2 py-1 bg-gray-50 flex-shrink-0"
+                  >
+                    {activeViewerFileDataList.map((_, idx) => (
+                      <option key={idx} value={idx}>
+                        PDF {idx + 1}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                   onClick={() => setIsPdfMaximized((v) => !v)}

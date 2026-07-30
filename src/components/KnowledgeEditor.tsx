@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useKnowledgeStore } from '../store/knowledgeStore'
-import type { KnowledgeItem } from '../types'
-import { X, Save, Plus, Eye, Edit3, Folder } from 'lucide-react'
+import type { KnowledgeItem, SourceType } from '../types'
+import { processFile } from '../utils/fileProcessor'
+import { X, Save, Plus, Eye, Edit3, Folder, FileUp, FileText, AlertCircle, Loader2 } from 'lucide-react'
 import { marked } from 'marked'
 
 interface KnowledgeEditorProps {
@@ -22,6 +23,13 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
   const [category, setCategory] = useState('')
   const [customCategory, setCustomCategory] = useState('')
   const [editorMode, setEditorMode] = useState<'edit' | 'preview'>('edit')
+  const [source, setSource] = useState<SourceType>('manual')
+  const [fileData, setFileData] = useState<string | undefined>(undefined)
+  const [fileDataList, setFileDataList] = useState<string[] | undefined>(undefined)
+  const [sourceFile, setSourceFile] = useState<string | undefined>(undefined)
+  const [fileImportStatus, setFileImportStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [fileImportMessage, setFileImportMessage] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const renderedMarkdown = marked(content) as string
 
@@ -31,8 +39,90 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
       setContent(item.content)
       setTags(item.tags.join(', '))
       setCategory(item.category || '')
+      setSource(item.source)
+      setFileData(item.fileData)
+      setFileDataList(item.fileDataList)
+      setSourceFile(item.sourceFile)
     }
   }, [item])
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    if (files.length === 0) return
+
+    setFileImportStatus('loading')
+    setFileImportMessage(`正在處理 ${files.length} 個檔案...`)
+
+    try {
+      if (files.length === 1) {
+        // 單一檔案
+        const result = await processFile(files[0])
+        setTitle(result.title)
+        setContent(result.content)
+        setSource(result.source)
+        setFileData(result.fileData)
+        setFileDataList(result.fileData ? [result.fileData] : undefined)
+        setSourceFile(result.fileName)
+      } else {
+        // 多個檔案合併
+        const results = []
+        const errorFiles: string[] = []
+
+        for (const file of files) {
+          try {
+            const result = await processFile(file)
+            results.push(result)
+          } catch (error) {
+            console.error('Import error:', error)
+            errorFiles.push(file.name)
+          }
+        }
+
+        if (results.length === 0) {
+          throw new Error(
+            errorFiles.length > 0
+              ? `匯入失敗：${errorFiles.join(', ')}`
+              : '匯入失敗'
+          )
+        }
+
+        const combinedContent = results
+          .map((r, i) => {
+            const separator = i > 0 ? `\n\n---\n\n## ${r.title}\n\n` : ''
+            return separator + r.content
+          })
+          .join('\n\n')
+
+        setTitle(results[0].title)
+        setContent(combinedContent)
+        setSource(results.find((r) => r.source === 'pdf')?.source || results[0].source)
+        const allFileData = results.filter((r) => r.fileData).map((r) => r.fileData!)
+        setFileData(allFileData[0])
+        setFileDataList(allFileData.length > 0 ? allFileData : undefined)
+        setSourceFile(results.map((r) => r.fileName).join(', '))
+      }
+
+      setFileImportStatus('success')
+      setFileImportMessage(`成功處理 ${files.length} 個檔案`)
+    } catch (error) {
+      console.error('Import error:', error)
+      setFileImportStatus('error')
+      setFileImportMessage(
+        error instanceof Error ? error.message : '匯入失敗'
+      )
+    }
+
+    // 重置檔案輸入
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+
+    // 清除訊息
+    setTimeout(() => {
+      setFileImportStatus('idle')
+      setFileImportMessage('')
+    }, 4000)
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,21 +133,33 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
     }
 
     const tagList = tags
-      .split(/[,\uFF0C]/)
+      .split(/[,，]/)
       .map((t) => t.trim())
       .filter((t) => t.length > 0)
 
     const finalCategory = category === '__custom__' ? customCategory.trim() : category || undefined
 
     if (item) {
-      updateItem(item.id, { title, content, tags: tagList, category: finalCategory })
+      updateItem(item.id, {
+        title,
+        content,
+        tags: tagList,
+        category: finalCategory,
+        source,
+        sourceFile,
+        fileData,
+        fileDataList,
+      })
     } else {
       addItem({
         title,
         content,
         tags: tagList,
         category: finalCategory,
-        source: 'manual',
+        source,
+        sourceFile,
+        fileData,
+        fileDataList,
       })
     }
 
@@ -90,6 +192,60 @@ export const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({
               placeholder="輸入知識項目標題"
               required
             />
+          </div>
+
+          {/* 檔案匯入區塊 */}
+          <div>
+            <label className="block text-sm font-medium mb-1 flex items-center gap-1">
+              <FileUp className="h-4 w-4" />
+              匯入檔案
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.md,.markdown,.jpg,.jpeg,.png,.gif,.webp,.svg,.bmp"
+              multiple
+              onChange={handleFileSelect}
+              className="hidden"
+              id="editor-file-input"
+              disabled={fileImportStatus === 'loading'}
+            />
+            <label
+              htmlFor="editor-file-input"
+              className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-lg transition-colors cursor-pointer ${
+                fileImportStatus === 'loading'
+                  ? 'opacity-60 bg-gray-50'
+                  : 'hover:bg-gray-50'
+              }`}
+            >
+              {fileImportStatus === 'loading' ? (
+                <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+              ) : (
+                <FileText className="h-5 w-5 text-gray-400" />
+              )}
+              <span className="text-sm text-gray-600">
+                {fileImportStatus === 'loading'
+                  ? fileImportMessage
+                  : '點擊選擇檔案 (PDF、Markdown 或圖片)'}
+              </span>
+            </label>
+            {fileImportStatus === 'success' && (
+              <div className="flex items-center gap-2 text-sm text-green-600 mt-2">
+                <FileText className="h-4 w-4" />
+                {fileImportMessage}
+              </div>
+            )}
+            {fileImportStatus === 'error' && (
+              <div className="flex items-center gap-2 text-sm text-red-600 mt-2">
+                <AlertCircle className="h-4 w-4" />
+                {fileImportMessage}
+              </div>
+            )}
+            {sourceFile && (
+              <div className="text-xs text-gray-500 mt-2">
+                來源: {sourceFile}
+              </div>
+            )}
           </div>
 
           <div>
